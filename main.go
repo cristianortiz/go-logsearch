@@ -6,18 +6,36 @@ import (
 	"go-logsearch/internal/shared/logger"
 	"os"
 	"path/filepath"
+	"sync"
 
 	"go.uber.org/zap"
+)
+
+const (
+	logDir     = "logs"
+	numWorkers = 4 //concurrents workers to analyze files
 )
 
 func main() {
 
 	log := logger.GetLogger()
 	defer log.Sync()
-	log.Info("-- Starting sequential log files analysis --")
+	log.Info("-- Starting CONCURRENT log files analysis --", zap.Int("workers", numWorkers))
 
-	//log file directory
-	logDir := "logs"
+	//-- Channels to goroutines communications --
+	//to send file routes from discoverer to workers, the buffer is used to avoid blocking
+	// the discoverer if workers are busy
+	jobs := make(chan string, 10)
+	//to send results from workers to "agreggator"
+	results := make(chan analyzer.AnalysisResult, 10)
+
+	var wg sync.WaitGroup
+
+	// launch workers (consumers)
+	for i := 1; i <= numWorkers; i++ {
+		wg.Add(1) // Incrementar el contador del WaitGroup
+		go worker(i, &wg, jobs, results)
+	}
 
 	files, err := os.ReadDir(logDir)
 	if err != nil {
