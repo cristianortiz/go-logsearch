@@ -1,0 +1,4 @@
+INFO: Application starting up.
+DEBUG: Configuration loaded.
+ERROR: Failed to connect to database.
+INFO: Retrying connection...
