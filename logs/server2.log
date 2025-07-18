@@ -1,0 +1,26 @@
+INFO: API started
+DEBUG: Configuration loaded.
+ERROR: Failed to connect to database.
+INFO: Retrying connection...
+ERROR: Failed to connect to external service.
+ERROR: Failed to load env files.
+ERROR: Port 9099 is already in use
+INFO: Retrying connection...
+ERROR: Failed to connect to external service.
+ERROR: Failed to load env files.
+ERROR: Port 9099 is already in use
+INFO: Retrying connection...
+ERROR: Failed to connect to external service.
+ERROR: Failed to load env files.
+ERROR: Port 9099 is already in use
+INFO: Retrying connection...
+ERROR: Failed to connect to external service.
+ERROR: Failed to load env files.
+ERROR: Port 9099 is already in useINFO: Retrying connection...
+ERROR: Failed to connect to external service.
+ERROR: Failed to load env files.
+ERROR: Port 9099 is already in use
+INFO: Retrying connection...
+ERROR: Failed to connect to external service.
+ERROR: Failed to load env files.
+ERROR: Port 9099 is already in use

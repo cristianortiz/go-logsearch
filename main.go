@@ -16,9 +16,10 @@ const (
 	numWorkers = 4 //concurrents workers to analyze files
 )
 
+var log = logger.GetLogger()
+
 func main() {
 
-	log := logger.GetLogger()
 	defer log.Sync()
 	log.Info("-- Starting CONCURRENT log files analysis --", zap.Int("workers", numWorkers))
 
@@ -31,49 +32,86 @@ func main() {
 
 	var wg sync.WaitGroup
 
+	go discoverFiles(jobs)
+
+	// goroutine for wait for all workers are finished, then closes 'results' channel
+	go func() {
+		wg.Wait()
+		close(results)
+	}()
+
 	// launch workers (consumers)
 	for i := 1; i <= numWorkers; i++ {
-		wg.Add(1) // Incrementar el contador del WaitGroup
+		wg.Add(1)
 		go worker(i, &wg, jobs, results)
 	}
 
-	files, err := os.ReadDir(logDir)
-	if err != nil {
-		log.Fatal("logs directory can't be read it..",
-			zap.String("directory", logDir),
-			zap.Error(err))
-	}
-
+	// aggregate or collect results from 'result' channel
 	var totalErrorCount int
 	var filesAnalyzed int
-	// analyzing every log file
-	for _, file := range files {
-		if !file.IsDir() && filepath.Ext(file.Name()) == ".log" {
-			filePath := filepath.Join(logDir, file.Name())
-			log.Info("Analyzing file", zap.String("file", filePath))
-
-			result, err := analyzer.AnalyzeSingleFile(filePath)
-			if err != nil {
-				log.Warn("file ommited due error analysis",
-					zap.String("file", filePath))
-				continue
-			}
-			filesAnalyzed++
-			totalErrorCount += result.ErrorCount
-		}
+	for result := range results {
+		log.Info("Result received",
+			zap.String("file", result.FileName),
+			zap.Int("errors_found", result.ErrorCount),
+		)
+		filesAnalyzed++
+		totalErrorCount += result.ErrorCount
 	}
 
 	//print results
-	log.Info("--- Análisis secuencial completado ---",
+	log.Info("-- Concurrent Analysis finished --",
 		zap.Int("files_analyzed", filesAnalyzed),
 		zap.Int("total_errors_found", totalErrorCount),
 	)
 
 	fmt.Println("\n======================================")
-	fmt.Printf(" analysis resume\n")
+	fmt.Printf(" concurrent analysis resume\n")
 	fmt.Println("======================================")
 	fmt.Printf(" Analyzed Files: %d\n", filesAnalyzed)
 	fmt.Printf(" Total ERROR lines founded: %d\n", totalErrorCount)
 	fmt.Println("======================================")
+
+}
+
+// discoverFiles search files with .log extension inside directory and send it to jobs channel
+func discoverFiles(jobs chan<- string) {
+	defer close(jobs)
+	err := filepath.Walk(logDir, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		if !info.IsDir() && filepath.Ext(path) == ".log" {
+			log.Debug("File founded, sending to jobs", zap.String("file", path))
+			jobs <- path
+		}
+		return nil
+	})
+
+	if err != nil {
+		log.Error("Error searching for files", zap.Error(err))
+	}
+}
+
+// worker is a goroutine that receive file routes from 'jobs channel'
+// process it and send results to 'result' channel
+func worker(id int, wg *sync.WaitGroup, jobs <-chan string, results chan<- analyzer.AnalysisResult) {
+	defer wg.Done()
+	log.Info("worker started", zap.Int("worker_id", id))
+
+	//the loop executes on a channel until the channel is closed and get empty
+	for filePath := range jobs {
+		log.Debug("Worker processing file", zap.Int("worker_id", id), zap.String("file", filePath))
+		result, err := analyzer.AnalyzeSingleFile(filePath)
+		if err != nil {
+			log.Warn("Worker has ommited file on error",
+				zap.Int("worker_id", id),
+				zap.String("file", filePath),
+				zap.Error(err),
+			)
+			continue
+		}
+		results <- result
+	}
+	log.Info("Worker finished, no more jobs to process", zap.Int("worker_id", id))
 
 }
