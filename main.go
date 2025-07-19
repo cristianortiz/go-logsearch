@@ -31,7 +31,7 @@ func main() {
 	results := make(chan analyzer.AnalysisResult, 10)
 
 	var wg sync.WaitGroup
-
+	//producer
 	go discoverFiles(jobs)
 
 	// goroutine for wait for all workers are finished, then closes 'results' channel
