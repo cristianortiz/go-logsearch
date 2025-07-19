@@ -76,7 +76,7 @@ func main() {
 // discoverFiles search files with .log extension inside directory and send it to jobs channel
 func discoverFiles(jobs chan<- string) {
 	defer close(jobs)
-	err := filepath.Walk(logDir, func(path string, info os.FileInfo, err error) error {
+	err := filepath.WalkDir(logDir, func(path string, info os.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
