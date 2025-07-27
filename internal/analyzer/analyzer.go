@@ -53,3 +53,17 @@ func AnalyzeSingleFile(filepath string) (AnalysisResult, error) {
 
 	return result, nil
 }
+
+func AnalyzeFileContent(content string) AnalysisResult {
+	result := AnalysisResult{}
+	result.ErrorCount = 0
+	scanner := strings.NewReader(content)
+	bufScanner := bufio.NewScanner(scanner)
+	for bufScanner.Scan() {
+		line := bufScanner.Text()
+		if strings.Contains(line, "ERROR") {
+			result.ErrorCount++
+		}
+	}
+	return result
+}
