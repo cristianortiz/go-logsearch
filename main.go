@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"go-logsearch/internal/analyzer"
 	"go-logsearch/internal/shared/logger"
@@ -22,6 +23,8 @@ var log = logger.GetLogger()
 
 func main() {
 
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	defer log.Sync()
 	log.Info("-- Starting CONCURRENT (Worker Pools - Fans) log files analysis --",
 		zap.Int("reader_workers", numReaderWorkers),
@@ -34,8 +37,31 @@ func main() {
 	readerPool := workerpool.NewWorkerPool(numReaderWorkers)
 	processorPool := workerpool.NewWorkerPool(numReaderWorkers)
 	//-- Launch workerpools
-	go readerPool.Run()
-	go processorPool.Run()
+	go readerPool.Run(ctx)
+	go processorPool.Run(ctx)
+
+	// launch goroutines to monitoring readerPool and processorPool errors
+	go func() {
+		for err := range readerPool.Errors() {
+			log.Error("readPool error detected", zap.Error(err))
+			// critical error cancel ops
+			if isCriticalError(err) {
+				log.Error("critical cancel operation")
+				cancel()
+				return
+			}
+		}
+	}()
+	go func() {
+		for err := range processorPool.Errors() {
+			log.Error("processorPool error detected", zap.Error(err))
+			if isCriticalError(err) {
+				log.Error("critical cancel operation")
+				cancel()
+				return
+			}
+		}
+	}()
 
 	//--waitGroups to sync
 	var discoverWg sync.WaitGroup
@@ -118,7 +144,6 @@ func collectAndDisplayResults(processorPool *workerpool.WorkerPool) {
 			log.Error("Error processing chunk", zap.Error(r.Err()))
 			continue
 		}
-
 		// Obtener el resultado usando el nuevo método específico
 		analysisResult := r.GetAnalysisResult()
 		if analysisResult != nil {
@@ -144,4 +169,10 @@ func collectAndDisplayResults(processorPool *workerpool.WorkerPool) {
 	fmt.Printf(" Archivos analizados: %d\n", filesAnalyzed)
 	fmt.Printf(" Total 'ERROR'lines founded: %d\n", totalErrorCount)
 	fmt.Println("======================================")
+}
+
+func isCriticalError(err error) bool {
+
+	// logic to define if an error is critical for the app operation  ex. directory or file access, disc related errors, etc
+	return false
 }
