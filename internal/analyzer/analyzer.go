@@ -3,6 +3,7 @@ package analyzer
 import (
 	"bufio"
 	"go-logsearch/internal/shared/logger"
+	"go-logsearch/internal/types"
 	"os"
 	"strings"
 
@@ -13,8 +14,8 @@ import (
 // returns the analysys result and a possible error
 var log = logger.GetLogger()
 
-func AnalyzeSingleFile(filepath string) (AnalysisResult, error) {
-	result := AnalysisResult{
+func AnalyzeSingleFile(filepath string) (types.AnalysisResult, error) {
+	result := types.AnalysisResult{
 		FileName: filepath,
 	}
 	//open file
@@ -54,15 +55,14 @@ func AnalyzeSingleFile(filepath string) (AnalysisResult, error) {
 	return result, nil
 }
 
-func AnalyzeFileContent(content string) AnalysisResult {
-	result := AnalysisResult{}
-	result.ErrorCount = 0
-	scanner := strings.NewReader(content)
-	bufScanner := bufio.NewScanner(scanner)
-	for bufScanner.Scan() {
-		line := bufScanner.Text()
+func AnalyzeFileContent(content string) types.AnalysisResult {
+	result := types.AnalysisResult{}
+	scanner := bufio.NewScanner(strings.NewReader(content))
+	for scanner.Scan() {
+		line := scanner.Text()
 		if strings.Contains(line, "ERROR") {
 			result.ErrorCount++
+			log.Debug("Found ERROR line", zap.Int("error_count", result.ErrorCount))
 		}
 	}
 	return result
