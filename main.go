@@ -71,14 +71,11 @@ func main() {
 	discoverWg.Add(1)
 	go discoverFiles(&discoverWg, filePaths)
 
-	// Procesar archivos (consumer)
+	// Procesing files (consumer)
 	processingWg.Add(1)
 	go processFiles(&processingWg, &readFileWg, filePaths, &readerPool, &processorPool)
-
-	// Esperar a que termine el procesamiento
 	processingWg.Wait()
 
-	// Recopilar y mostrar resultados
 	collectAndDisplayResults(&processorPool)
 
 }
