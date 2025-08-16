@@ -8,14 +8,22 @@ import (
 	"go.uber.org/zap"
 )
 
+// represents the content of a readed file
+type FileContent struct {
+	FileName string
+	Content  string
+}
+
+// handles only reading files
 type ReadFileTask struct {
 	FilePath      string
-	ProcessorPool *workerpool.WorkerPool
+	OutputChannel chan<- FileContent
 	ReadFileWg    *sync.WaitGroup
 }
 
 type ProcessChunkTask struct {
-	Content string
+	Content  string
+	FileName string
 }
 
 func (r *ReadFileTask) Execute() (workerpool.Result, error) {
@@ -25,15 +33,21 @@ func (r *ReadFileTask) Execute() (workerpool.Result, error) {
 	if err != nil {
 		return ReadFileResult{}, err
 	}
-	//send processChunkTask to processorPool
-	r.ProcessorPool.Submit(ProcessChunkTask{Content: string(content)})
-	return ReadFileResult{}, nil
+	//send content to outputChannel
+	r.OutputChannel <- FileContent{
+		FileName: r.FilePath,
+		Content:  string(content),
+	}
+	return ReadFileResult{FilePath: r.FilePath}, nil
 
 }
 
 func (t ProcessChunkTask) Execute() (workerpool.Result, error) {
 	log.Debug("Executing ProcessChunkTask")
+
 	result := AnalyzeFileContent(t.Content)
+	result.FileName = t.FileName
 	log.Debug("ProcessChunkTask finished", zap.Int("error_count", result.ErrorCount))
+
 	return ProcessChunkResult{Result: result}, nil
 }
