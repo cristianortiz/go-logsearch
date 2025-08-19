@@ -228,6 +228,6 @@ func isCriticalError(err error) bool {
 
 	// logic to define if an error is critical for the app operation  ex. directory or file access, disc related errors, etc
 	// for now just log the error
-	log.Error("critital error", zap.Error(err))
+	log.Error("critical error", zap.Error(err))
 	return false
 }

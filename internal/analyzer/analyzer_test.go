@@ -1,6 +1,9 @@
 package analyzer
 
-import "testing"
+import (
+	"fmt"
+	"testing"
+)
 
 func TestAnalyzerFileContent(t *testing.T) {
 	tests := []struct {
@@ -67,4 +70,51 @@ func TestAnalyzerFileContent(t *testing.T) {
 		})
 
 	}
+}
+
+func generateLongString(length int) string {
+	if length <= 0 {
+		return ""
+	}
+	result := make([]byte, length)
+	for i := range result {
+		result[i] = 'a' + byte(i%26)
+
+	}
+	return string(result)
+}
+
+// performance benchmark
+func BenchmarkAnalizeFileContent(b *testing.B) {
+	content := `2023-01-01 10:00:00 INFO: System started
+				2023-01-01 10:01:00 DEBUG: Load configuration
+				2023-01-01 10:02:00 INFO: DB connected
+				2023-01-01 10:03:00 ERROR: Failed user authentication
+				2023-01-01 10:04:00 WARN: Re attemp external service conection
+				2023-01-01 10:05:00 INFO: User login succesfully
+				2023-01-01 10:06:00 ERROR: Timeout reaching external service
+				2023-01-01 10:07:00 INFO: Operation complete`
+
+	b.ResetTimer()
+	for b.Loop() {
+		AnalyzeFileContent(content)
+
+	}
+}
+func BenchmarkAnalizeLargeFile(b *testing.B) {
+	//big file simulation
+	var content string
+	for i := 0; i < 1000; i++ {
+		if i%10 == 0 {
+			content += "ERROR: Error number " + fmt.Sprintf("%d", i) + "\n"
+		} else {
+			content += "INFO: info message number " + fmt.Sprintf("%d", i) + "\n"
+		}
+
+	}
+	b.ResetTimer()
+	for b.Loop() {
+		AnalyzeFileContent(content)
+	}
+
 }
